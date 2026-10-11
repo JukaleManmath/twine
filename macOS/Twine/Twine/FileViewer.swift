@@ -17,12 +17,13 @@ struct FileViewer: View {
     @State private var syntaxMode = FileSyntaxMode.automatic
 
     private var current: FilePreview? { editor.baseline }
-    private var previewFormat: FilePreviewFormat? { FilePreviewFormat(path: path) }
+    private var previewFormat: FilePreviewFormat? { editor.previewFormat }
     private var showsPreview: Bool { previewFormat != nil && mode == .preview }
     private enum Mode { case preview, source }
     private var syntaxLanguage: SyntaxLanguage? { syntaxMode.language(path: path, source: editor.text) }
     private var editorSettings: CoreEditorConfig { coreClient.snapshot?.config.editor ?? .init() }
     private var saveStatus: String {
+        if !editor.isEditable { return "Read-only" }
         if editor.isSaving { return "Saving…" }
         if editor.isConfigFile || !editor.autosaveSettings.autosave { return "⌘S to save" }
         return editor.autosavePaused ? "Autosave paused · ⌘S to retry" : "Autosave"
@@ -30,36 +31,28 @@ struct FileViewer: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 10) {
-                Image(systemName: "doc.text").foregroundStyle(.secondary)
-                Text(path.hasPrefix(folder + "/") ? String(path.dropFirst(folder.count + 1)) : path)
-                    .font(.caption).lineLimit(1).truncationMode(.middle).help(path)
-                Spacer(minLength: 0)
-                if current?.status == .text, !showsPreview {
-                    syntaxMenu
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    fileTitle
+                    Spacer(minLength: 0)
+                    syntaxControls
+                    displayControls
+                    saveControls
                 }
-                if let format = previewFormat {
-                    Picker("\(format.name) display", selection: $mode) {
-                        Text("Preview").tag(Mode.preview)
-                        Text("Source").tag(Mode.source)
+                VStack(alignment: .leading, spacing: 8) {
+                    fileTitle
+                    if previewFormat != nil || editor.memorySource != nil {
+                        HStack(spacing: 10) {
+                            displayControls
+                            Spacer(minLength: 0)
+                        }
                     }
-                    .pickerStyle(.segmented).fixedSize().controlSize(.small)
-                    .help("Preview shows the saved file. Source lets you view and edit its \(format.name).")
-                    .accessibilityIdentifier("\(format.accessibilityPrefix)DisplayMode")
+                    HStack(spacing: 10) {
+                        syntaxControls
+                        saveControls
+                        Spacer(minLength: 0)
+                    }
                 }
-                if editor.isDirty { Text("Edited").sectionLabelStyle().accessibilityIdentifier("fileEdited") }
-                if current?.status == .text {
-                    Text(saveStatus).font(.caption).foregroundStyle(.secondary)
-                        .accessibilityIdentifier("fileSaveStatus")
-                        .accessibilityLabel(saveStatus)
-                        .help("Press ⌘S to save immediately. Configure autosave and its delay in Settings.")
-                }
-                Button("Go to Line…") { showsGoToLine = true }
-                    .font(.caption)
-                    .keyboardShortcut("l", modifiers: .command)
-                    .disabled(current?.status != .text || showsPreview)
-                    .accessibilityIdentifier("goToLine")
-                    .popover(isPresented: $showsGoToLine) { goToLineForm.appZoom() }
             }
             .padding(14)
             Divider()
@@ -79,7 +72,9 @@ struct FileViewer: View {
                                 HTMLPreview(
                                     file: diskFile, folder: folder, navigationURL: editor.navigationURL,
                                     isVisible: isVisible, openFile: openFile, format: format,
-                                    localResourcesOnly: editor.memoryRequest != nil
+                                    localResourcesOnly: editor.memoryRequest != nil,
+                                    hidesFrontmatter: editor.memoryRequest != nil,
+                                    focusesOnShow: editor.memoryRequest == nil
                                 )
                                 .id(editor.navigationID)
                             } else {
@@ -99,10 +94,8 @@ struct FileViewer: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .textBackgroundColor))
         .clipShape(.rect(cornerRadius: CornerRadius.panel))
+        .accessibilityElement(children: .contain)
         .onChange(of: editor.navigationID) { mode = .preview }
-        .onChange(of: editor.sourceRequestID, initial: true) {
-            if editor.sourceRequestID != nil { mode = .source }
-        }
         .onChange(of: editorSettings, initial: true) { editor.configureAutosave(editorSettings) }
         .task(id: editor.autosaveID) { await editor.autosave() }
         .task(id: editor.saveID) { await editor.savePending(client: coreClient, didSave: didSave) }
@@ -132,13 +125,64 @@ struct FileViewer: View {
         }
     }
 
+    private var fileTitle: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "doc.text").foregroundStyle(.secondary)
+            Text(
+                editor.memorySource?.title
+                    ?? (path.hasPrefix(folder + "/") ? String(path.dropFirst(folder.count + 1)) : path)
+            )
+            .font(.caption).lineLimit(1).truncationMode(.middle).help(path)
+        }
+    }
+
+    @ViewBuilder private var syntaxControls: some View {
+        if current?.status == .text, !showsPreview {
+            syntaxMenu
+        }
+    }
+
+    @ViewBuilder private var displayControls: some View {
+        if let format = previewFormat {
+            Picker("\(format.name) display", selection: $mode) {
+                Text("Preview").tag(Mode.preview)
+                Text("Source").tag(Mode.source)
+            }
+            .pickerStyle(.segmented).fixedSize().controlSize(.small)
+            .help("Preview shows the saved file. Source lets you view and edit its \(format.name).")
+            .accessibilityIdentifier("\(format.accessibilityPrefix)DisplayMode")
+        }
+        if let source = editor.memorySource {
+            MemorySourceInfo(
+                source: source, lineCount: editor.text.components(separatedBy: "\n").count,
+                canEdit: editor.isEditable)
+        }
+    }
+
+    @ViewBuilder private var saveControls: some View {
+        if editor.isDirty { Text("Edited").sectionLabelStyle().accessibilityIdentifier("fileEdited") }
+        if current?.status == .text {
+            Text(saveStatus).font(.caption).foregroundStyle(.secondary)
+                .accessibilityIdentifier("fileSaveStatus")
+                .accessibilityLabel(saveStatus)
+                .help("Press ⌘S to save immediately. Configure autosave and its delay in Settings.")
+        }
+        Button("Go to Line…") { showsGoToLine = true }
+            .font(.caption)
+            .keyboardShortcut("l", modifiers: .command)
+            .disabled(current?.status != .text || showsPreview)
+            .accessibilityIdentifier("goToLine")
+            .popover(isPresented: $showsGoToLine) { goToLineForm.appZoom() }
+    }
+
     @ViewBuilder private func content(_ preview: FilePreview) -> some View {
         switch preview.status {
         case .text:
             FileTextView(
                 text: Binding(get: { editor.text }, set: { editor.text = $0 }),
-                loadID: editor.loadID, isEditable: !showsPreview,
-                isVisible: isVisible && !showsPreview, lineRequest: lineRequest, language: syntaxLanguage)
+                loadID: editor.loadID, isEditable: editor.isEditable && !showsPreview,
+                isVisible: isVisible && !showsPreview, lineRequest: lineRequest, language: syntaxLanguage,
+                focusesOnShow: editor.memoryRequest == nil || previewFormat != nil)
         case .binary:
             unavailable("Binary File", "Only UTF-8 text files can be displayed.")
         case .tooLarge:

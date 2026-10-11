@@ -8,7 +8,7 @@ struct HTMLPreview: View {
     let openFile: (URL) -> Void
     var format: FilePreviewFormat = .html
     var localResourcesOnly = false
-    var markdownStyle = MarkdownRenderer.Style.document
+    var hidesFrontmatter = false
     var focusesOnShow = true
     @State private var load: Load?
     @State private var failure: String?
@@ -35,7 +35,11 @@ struct HTMLPreview: View {
                 ProgressView("Loading preview…")
             }
         }
-        .task(id: Request(file: file, navigationURL: navigationURL)) {
+        .task(
+            id: Request(
+                file: file, folder: folder, navigationURL: navigationURL, format: format,
+                localResourcesOnly: localResourcesOnly, hidesFrontmatter: hidesFrontmatter)
+        ) {
             let location = await HTMLPreviewLocation.resolve(
                 file: navigationURL ?? URL(filePath: file.path), folder: URL(filePath: folder))
             guard !Task.isCancelled else { return }
@@ -46,7 +50,7 @@ struct HTMLPreview: View {
                     if format == .markdown {
                         html = try await MarkdownRenderer.render(
                             file.text ?? "", baseURL: MarkdownPreviewURL.preview(location.file),
-                            localResourcesOnly: localResourcesOnly, style: markdownStyle)
+                            localResourcesOnly: localResourcesOnly, hidesFrontmatter: hidesFrontmatter)
                     } else {
                         html = nil
                     }
@@ -72,6 +76,10 @@ struct HTMLPreview: View {
 
     private struct Request: Equatable {
         let file: FilePreview
+        let folder: String
         let navigationURL: URL?
+        let format: FilePreviewFormat
+        let localResourcesOnly: Bool
+        let hidesFrontmatter: Bool
     }
 }

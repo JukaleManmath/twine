@@ -33,7 +33,9 @@ final class FileTabsModel {
         selectedID = id
     }
 
-    func openMemory(_ file: FilePreview, request: CoreMemoryRequest, editing: Bool = true) {
+    func openMemory(
+        _ file: FilePreview, request: CoreMemoryRequest, source: CoreMemorySource? = nil
+    ) {
         let editor: FileEditorModel
         if let existing = editors.first(where: { $0.path == file.path }) {
             editor = existing
@@ -43,10 +45,28 @@ final class FileTabsModel {
                 memoryRequest: request)
             editors.append(editor)
         }
-        editor.useMemorySource(request)
+        editor.useMemorySource(request, source: source)
         editor.receive(file)
-        if editing { editor.editSource() }
         selectedID = editor.id
+    }
+
+    func openMemory(_ read: CoreMemoryRead, request: CoreMemoryRequest) {
+        openMemory(read.preview, request: request, source: read.source)
+    }
+
+    func openMemory(request: CoreMemoryRequest, client: CoreClient) async throws {
+        let origin = selectedID
+        let linkID = UUID()
+        memoryLinkID = linkID
+        let generations = Dictionary(uniqueKeysWithValues: editors.map { ($0.id, $0.generation) })
+        do {
+            let read = try await client.memoryRead(request)
+            guard isCurrentMemoryLink(linkID, origin: origin) else { return }
+            openMemory(read, request: request, generations: generations)
+        } catch {
+            guard isCurrentMemoryLink(linkID, origin: origin) else { return }
+            throw error
+        }
     }
 
     func openMemoryLink(_ url: URL, request: CoreMemoryRequest, client: CoreClient) async throws {
@@ -63,10 +83,10 @@ final class FileTabsModel {
             else { throw CoreFailure.failed("This link is not a discovered local memory file.") }
             var next = request
             next.sourceID = source.id
+            let generations = Dictionary(uniqueKeysWithValues: editors.map { ($0.id, $0.generation) })
             let read = try await client.memoryRead(next)
             guard isCurrentMemoryLink(linkID, origin: origin) else { return }
-            guard let file = read.file else { throw CoreFailure.unexpectedCommandResult }
-            openMemory(file, request: next, editing: false)
+            openMemory(read, request: next, generations: generations)
             selected?.navigate(to: url)
         } catch {
             guard isCurrentMemoryLink(linkID, origin: origin) else { return }
@@ -74,9 +94,30 @@ final class FileTabsModel {
         }
     }
 
-    private func isCurrentMemoryLink(_ linkID: UUID, origin: UUID) -> Bool {
+    func refreshMemory(_ editor: FileEditorModel, client: CoreClient) async throws {
+        guard let request = editor.memoryRequest else { return }
+        let generation = editor.generation
+        let read = try await client.memoryRead(request)
+        guard !Task.isCancelled, editor.generation == generation,
+            editors.contains(where: { $0 === editor })
+        else { return }
+        editor.useMemorySource(request, source: read.source)
+        editor.receive(read.preview)
+    }
+
+    private func openMemory(_ read: CoreMemoryRead, request: CoreMemoryRequest, generations: [UUID: UUID]) {
+        let editor = editors.first(where: { $0.path == read.preview.path })
+        if let editor, let generation = generations[editor.id], editor.generation != generation {
+            editor.useMemorySource(request, source: read.source)
+            selectedID = editor.id
+            return
+        }
+        openMemory(read, request: request)
+    }
+
+    private func isCurrentMemoryLink(_ linkID: UUID, origin: UUID?) -> Bool {
         !Task.isCancelled && memoryLinkID == linkID && selectedID == origin
-            && editors.contains(where: { $0.id == origin })
+            && (origin == nil || editors.contains(where: { $0.id == origin }))
     }
 
     func showWorkflows() { selectedID = nil }

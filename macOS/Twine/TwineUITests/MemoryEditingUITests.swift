@@ -34,14 +34,36 @@ extension TwineUITests {
         defer { app.terminate() }
         if !app.buttons["memoryEntry-outline"].waitForExistence(timeout: 10) { sidebarToggle(in: app).click() }
         app.buttons["memoryEntry-outline"].click()
+        openMemorySource("test · raw memory", in: app)
         XCTAssertTrue(app.staticTexts["Database memory"].waitForExistence(timeout: 10), app.debugDescription)
         XCTAssertTrue(app.staticTexts["Locally extracted"].exists)
         XCTAssertFalse(app.buttons["editMemoryMarkdown"].exists)
-        app.radioButtons["Markdown"].click()
-        XCTAssertTrue(app.textViews["memoryText"].waitForExistence(timeout: 5))
-        XCTAssertTrue((app.textViews["memoryText"].value as? String)?.contains("**Locally extracted**") == true)
+        app.radioButtons["Source"].click()
+        XCTAssertTrue(app.textViews["fileText"].waitForExistence(timeout: 5))
+        XCTAssertTrue((app.textViews["fileText"].value as? String)?.contains("**Locally extracted**") == true)
+        let contents = app.textViews["fileText"]
+        contents.click()
+        app.typeText("must remain read-only")
+        app.typeKey("s", modifierFlags: .command)
+        XCTAssertEqual(staticTextValue(app.staticTexts["fileSaveStatus"]), "Read-only")
         XCTAssertEqual(try Data(contentsOf: file), original)
         attachScreenshot(of: app, named: "SQLite extraction remains read-only")
+        verifyCompactStoreStatus(in: app)
+    }
+
+    @MainActor
+    private func verifyCompactStoreStatus(in app: XCUIApplication) {
+        app.popUpButtons["memoryKind"].click()
+        app.menuItems["Store status"].click()
+        openMemorySource("extraction records", in: app)
+        XCTAssertTrue(app.textViews["fileText"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.radioButtons["Preview"].exists)
+        sidebarToggle(in: app).click()
+        resizeWindow(app.windows.firstMatch, to: CGSize(width: 520, height: 620))
+        XCTAssertEqual(staticTextValue(app.staticTexts["fileSaveStatus"]), "Read-only")
+        XCTAssertTrue(app.buttons["memorySourceInfo"].isHittable)
+        app.buttons["memorySourceInfo"].click()
+        XCTAssertTrue(app.staticTexts["Read-only source"].waitForExistence(timeout: 3))
     }
 
     @MainActor
@@ -62,17 +84,20 @@ extension TwineUITests {
         let original = fixture.original
         defer { app.terminate() }
         XCTAssertTrue(app.staticTexts["Readable memory"].waitForExistence(timeout: 10), app.debugDescription)
-        app.radioButtons["Markdown"].click()
-        XCTAssertTrue(app.textViews["memoryText"].waitForExistence(timeout: 5))
-        XCTAssertTrue((app.textViews["memoryText"].value as? String)?.contains("**Useful advice**") == true)
+        app.radioButtons["Source"].click()
+        XCTAssertTrue(app.textViews["fileText"].waitForExistence(timeout: 5))
+        XCTAssertTrue((app.textViews["fileText"].value as? String)?.contains("**Useful advice**") == true)
         app.radioButtons["Preview"].click()
         XCTAssertTrue(app.links["Related note"].waitForExistence(timeout: 5))
         app.links["Related note"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
         XCTAssertTrue(app.staticTexts["Linked memory"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["name: hidden metadata"].exists)
         attachScreenshot(of: app, named: claude ? "Claude rendered memory" : "Codex rendered memory")
-        XCTAssertTrue(app.buttons["editMemoryMarkdown"].waitForExistence(timeout: 5), app.debugDescription)
-        app.buttons["editMemoryMarkdown"].click()
+        XCTAssertTrue(fileTab(topic, in: app).exists)
+        XCTAssertTrue(
+            fileTab(topic.deletingLastPathComponent().appending(path: "MEMORY.md"), in: app).exists)
+        XCTAssertFalse(app.buttons["editMemoryMarkdown"].exists)
+        app.radioButtons["Source"].click()
         let text = app.textViews["fileText"]
         XCTAssertTrue(text.waitForExistence(timeout: 5), app.debugDescription)
         XCTAssertEqual(text.value as? String, original)
@@ -81,9 +106,9 @@ extension TwineUITests {
         replaceMemoryText("# Saved memory\n\nUseful edited advice.\n", in: text)
         waitForSave(in: app)
         XCTAssertEqual(try String(contentsOf: topic, encoding: .utf8), "# Saved memory\n\nUseful edited advice.\n")
-        app.buttons["memoryEntry-outline"].click()
+        app.radioButtons["Preview"].click()
         XCTAssertTrue(app.staticTexts["Saved memory"].waitForExistence(timeout: 5), app.debugDescription)
-        app.buttons["editMemoryMarkdown"].click()
+        app.radioButtons["Source"].click()
         try verifyMemoryConflict(in: app, text: text, file: topic)
     }
 
@@ -104,6 +129,15 @@ extension TwineUITests {
         text.click()
         text.typeKey("a", modifierFlags: .command)
         text.typeText(replacement)
+    }
+
+    @MainActor
+    func openMemorySource(_ title: String, in app: XCUIApplication) {
+        let source = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH %@ AND label CONTAINS %@", "memorySource-", title)
+        ).firstMatch
+        XCTAssertTrue(source.waitForExistence(timeout: 10), app.debugDescription)
+        source.click()
     }
 
     @MainActor
@@ -130,6 +164,7 @@ extension TwineUITests {
         if !app.buttons["memoryEntry-outline"].waitForExistence(timeout: 10) { sidebarToggle(in: app).click() }
         app.buttons["memoryEntry-outline"].click()
         if !claude { app.buttons["memoryScope-global"].click() }
+        openMemorySource("MEMORY.md", in: app)
         return MemoryEditingFixture(app: app, topic: topic, original: original)
     }
 }
