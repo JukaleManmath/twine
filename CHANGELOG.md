@@ -7,11 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-10-12
+
+### Added
+
+- Choose separate light and dark terminal palettes with optional `[theme]` settings.
+
+### Changed
+
+- Use a private bundled Hack Nerd Font when no custom font is configured, so terminal icons work
+  without installing a font. Custom font names continue to select fonts installed in macOS.
+- Use Twine light and dark terminal palettes with neutral surfaces, vivid accents, and
+  clearer selections. Preserve customized themes.
+
+### Fixed
+
+- Show the “No Open Tabs” message directly on the workspace background.
+
 ## [0.3.1] - 2026-10-12
 
 ### Added
 
-- Show Git status beside files and dots beside folders with changes.
+- Show Git status beside files and folders with changes.
 
 ### Changed
 
@@ -234,7 +251,8 @@ Initial release of Twine, a native macOS workspace for coordinating coding agent
 - The app is ad hoc signed and not notarized. Follow the included install instructions
   to approve the first launch in macOS Privacy & Security settings.
 
-[unreleased]: https://github.com/standing-desks/twine/compare/v0.3.1...HEAD
+[unreleased]: https://github.com/standing-desks/twine/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/standing-desks/twine/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/standing-desks/twine/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/standing-desks/twine/compare/v0.2.5...v0.3.0
 [0.2.5]: https://github.com/aravind-n/twine/compare/v0.2.4...v0.2.5
