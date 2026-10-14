@@ -100,10 +100,20 @@ pub struct TerminalConfig {
     /// An installed font family. Empty selects the platform's internal terminal font.
     pub font_family: String,
     pub font_size: FontSize,
+    pub cursor_style: CursorStyle,
     pub colors: TerminalColors,
     /// Resolved colors for consumers; never accepted as a user setting.
     #[serde(skip_deserializing)]
     pub palettes: TerminalPalettes,
+}
+
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CursorStyle {
+    #[default]
+    Block,
+    Underline,
+    Bar,
 }
 
 /// A terminal font size in points, limited to 6 through 72.
@@ -521,9 +531,11 @@ mod tests {
         let family = Config::parse(Path::new(PATH), "terminal.font_family = 'Menlo'\n");
         assert_eq!(family.config.terminal.font_family, "Menlo");
         assert_eq!(family.config.terminal.font_size, FontSize::default());
+        assert_eq!(family.config.terminal.cursor_style, CursorStyle::default());
         let size = Config::parse(Path::new(PATH), "terminal.font_size = 18\n");
         assert_eq!(size.config.terminal.font_family, "");
         assert_eq!(size.config.terminal.font_size, FontSize(18.0));
+        assert_eq!(size.config.terminal.cursor_style, CursorStyle::default());
         assert_eq!(family.diagnostics, []);
         assert_eq!(size.diagnostics, []);
         let system = Config::parse(Path::new(PATH), "terminal.font_family = ''\n");
@@ -556,6 +568,32 @@ mod tests {
                 assert_eq!(diagnostic.problem, ConfigProblem::InvalidValue);
                 assert!(!diagnostic.to_string().contains("secret"));
             }
+        }
+    }
+
+    #[test]
+    fn accepts_all_cursor_styles() {
+        for (value, expected) in [
+            ("block", CursorStyle::Block),
+            ("underline", CursorStyle::Underline),
+            ("bar", CursorStyle::Bar),
+        ] {
+            let source = format!("terminal.cursor_style = '{value}'\n");
+            let loaded = Config::parse(Path::new(PATH), &source);
+            assert_eq!(loaded.config.terminal.cursor_style, expected);
+            assert!(loaded.diagnostics.is_empty(), "{:?}", loaded.diagnostics);
+        }
+    }
+
+    #[test]
+    fn invalid_cursor_style_reports_the_key_and_uses_defaults() {
+        for value in ["'rectangle'", "42", "true", "[]"] {
+            let source = format!("[terminal]\ncursor_style = {value}\n");
+            let loaded = Config::parse(Path::new(PATH), &source);
+            assert_eq!(loaded.config, Config::default());
+            assert_eq!(loaded.diagnostics.len(), 1);
+            assert_eq!(loaded.diagnostics[0].key, "terminal.cursor_style");
+            assert_eq!(loaded.diagnostics[0].problem, ConfigProblem::InvalidValue);
         }
     }
 

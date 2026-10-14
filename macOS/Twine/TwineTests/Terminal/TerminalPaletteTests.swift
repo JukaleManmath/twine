@@ -12,7 +12,7 @@ struct TerminalPaletteTests {
         let data = Data(
             """
             {"appearance":{"color_scheme":"system"},
-             "terminal":{"font_family":"","font_size":13,"colors":{},
+             "terminal":{"font_family":"","font_size":13,"cursor_style":"block","colors":{},
               "palettes":{"light":\(Self.paletteJSON),"dark":\(Self.paletteJSON)}}}
             """.utf8)
         let config = try JSONDecoder().decode(CoreConfig.self, from: data)

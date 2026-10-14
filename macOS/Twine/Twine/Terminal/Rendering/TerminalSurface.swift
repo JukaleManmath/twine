@@ -56,6 +56,7 @@ struct TerminalSurface: View {
                 TerminalViewRepresentable(
                     coreClient: coreClient,
                     font: coreClient.terminalFont,
+                    cursorStyle: coreClient.terminalCursorStyle,
                     terminalID: terminalID,
                     historyTerminalIDs: historyTerminalIDs,
                     restoresOutput: restoresOutput,
@@ -144,6 +145,7 @@ struct TerminalViewRepresentable: NSViewRepresentable {
     @Environment(\.appZoom) private var zoom
     let coreClient: CoreClient
     let font: NSFont
+    let cursorStyle: CoreTerminalConfig.CursorStyle
     let terminalID: UInt64
     var historyTerminalIDs: [UInt64] = []
     var restoresOutput = false
@@ -174,6 +176,7 @@ struct TerminalViewRepresentable: NSViewRepresentable {
         view.applyTwineFont(font)
         view.terminalPalettes = coreClient.snapshot?.config.terminal.palettes
         view.applyTwinePalette()
+        view.applyCursorStyle(cursorStyle)
         view.automaticallyFocuses = automaticallyFocuses
         view.isSelected = isSelected
         view.focusRequest = focusRequest
@@ -200,6 +203,7 @@ struct TerminalViewRepresentable: NSViewRepresentable {
         nsView.setVisible(isVisible)
         nsView.terminalPalettes = coreClient.snapshot?.config.terminal.palettes
         nsView.applyTwinePalette()
+        nsView.applyCursorStyle(cursorStyle)
         minimap?.scheduleRefresh()
     }
 

@@ -86,7 +86,7 @@ struct FolderTests {
         let json = """
             {"sequence":2,"state":{"status":"ready"},
              "config":{"appearance":{"color_scheme":"system"},
-                       "terminal":{"font_family":"","font_size":13.0}},
+                       "terminal":{"font_family":"","font_size":13.0,"cursor_style":"block"}},
              "folders":{"openFolder":null,
                         "recentFolders":[{"path":"/p/locked","isMissing":false},{"path":"/p/gone","isMissing":true}],
                         "unavailableFolder":{"path":"/p/locked","reason":"inaccessible"}},

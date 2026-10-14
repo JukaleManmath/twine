@@ -10,7 +10,7 @@ struct CoreClientTests {
         let json = """
             {"sequence":1,"state":{"status":"ready"},
              "config":{"appearance":{"color_scheme":"\(colorScheme.rawValue)"},
-                       "terminal":{"font_family":"Menlo","font_size":15.5}},
+                       "terminal":{"font_family":"Menlo","font_size":15.5,"cursor_style":"block"}},
              "folders":{"openFolder":null,"recentFolders":[],"unavailableFolder":null},
              "terminals":[],"workflows":{"session":null,"sessions":[],"sessionsInitialized":false,"workflows":[]}}
             """

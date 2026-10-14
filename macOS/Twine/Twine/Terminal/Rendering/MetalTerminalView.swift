@@ -235,4 +235,18 @@ final class MetalTerminalView: TerminalView {
         guard self.font != font else { return }
         self.font = font
     }
+
+    private(set) var configuredCursorStyle: CoreTerminalConfig.CursorStyle?
+
+    func applyCursorStyle(_ style: CoreTerminalConfig.CursorStyle) {
+        guard configuredCursorStyle != style else { return }
+        configuredCursorStyle = style
+        let swiftTermStyle: CursorStyle =
+            switch style {
+            case .block: .steadyBlock
+            case .underline: .steadyUnderline
+            case .bar: .steadyBar
+            }
+        getTerminal().setCursorStyle(swiftTermStyle)
+    }
 }
