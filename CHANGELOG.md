@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Configure the terminal cursor shape with `terminal.cursor_style` — accepts `"block"`, `"underline"`, or `"bar"`.
+- Control whether the terminal cursor blinks with `terminal.cursor_blink` — defaults to `true`.
 
 ## [0.3.2] - 2026-10-12
 

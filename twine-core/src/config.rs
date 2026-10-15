@@ -94,17 +94,31 @@ impl<'de> Deserialize<'de> for AutosaveDelay {
     }
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(default)]
 pub struct TerminalConfig {
     /// An installed font family. Empty selects the platform's internal terminal font.
     pub font_family: String,
     pub font_size: FontSize,
     pub cursor_style: CursorStyle,
+    pub cursor_blink: bool,
     pub colors: TerminalColors,
     /// Resolved colors for consumers; never accepted as a user setting.
     #[serde(skip_deserializing)]
     pub palettes: TerminalPalettes,
+}
+
+impl Default for TerminalConfig {
+    fn default() -> Self {
+        Self {
+            font_family: String::new(),
+            font_size: FontSize::default(),
+            cursor_style: CursorStyle::default(),
+            cursor_blink: true,
+            colors: TerminalColors::default(),
+            palettes: TerminalPalettes::default(),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
@@ -532,10 +546,12 @@ mod tests {
         assert_eq!(family.config.terminal.font_family, "Menlo");
         assert_eq!(family.config.terminal.font_size, FontSize::default());
         assert_eq!(family.config.terminal.cursor_style, CursorStyle::default());
+        assert!(family.config.terminal.cursor_blink);
         let size = Config::parse(Path::new(PATH), "terminal.font_size = 18\n");
         assert_eq!(size.config.terminal.font_family, "");
         assert_eq!(size.config.terminal.font_size, FontSize(18.0));
         assert_eq!(size.config.terminal.cursor_style, CursorStyle::default());
+        assert!(size.config.terminal.cursor_blink);
         assert_eq!(family.diagnostics, []);
         assert_eq!(size.diagnostics, []);
         let system = Config::parse(Path::new(PATH), "terminal.font_family = ''\n");
@@ -593,6 +609,28 @@ mod tests {
             assert_eq!(loaded.config, Config::default());
             assert_eq!(loaded.diagnostics.len(), 1);
             assert_eq!(loaded.diagnostics[0].key, "terminal.cursor_style");
+            assert_eq!(loaded.diagnostics[0].problem, ConfigProblem::InvalidValue);
+        }
+    }
+
+    #[test]
+    fn accepts_cursor_blink_values() {
+        for (value, expected) in [("true", true), ("false", false)] {
+            let source = format!("terminal.cursor_blink = {value}\n");
+            let loaded = Config::parse(Path::new(PATH), &source);
+            assert_eq!(loaded.config.terminal.cursor_blink, expected);
+            assert!(loaded.diagnostics.is_empty(), "{:?}", loaded.diagnostics);
+        }
+    }
+
+    #[test]
+    fn invalid_cursor_blink_reports_the_key_and_uses_defaults() {
+        for value in ["'yes'", "1", "[]"] {
+            let source = format!("[terminal]\ncursor_blink = {value}\n");
+            let loaded = Config::parse(Path::new(PATH), &source);
+            assert_eq!(loaded.config, Config::default());
+            assert_eq!(loaded.diagnostics.len(), 1);
+            assert_eq!(loaded.diagnostics[0].key, "terminal.cursor_blink");
             assert_eq!(loaded.diagnostics[0].problem, ConfigProblem::InvalidValue);
         }
     }

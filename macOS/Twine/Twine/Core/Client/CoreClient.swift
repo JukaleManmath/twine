@@ -13,6 +13,7 @@ final class CoreClient {
     private(set) var snapshot: CoreSnapshot?
     private(set) var terminalFont = NSFont.terminal
     private(set) var terminalCursorStyle = CoreTerminalConfig.CursorStyle.block
+    private(set) var terminalCursorBlink: Bool = true
     private(set) var traceSnapshotGeneration: UInt64 = 0
     private(set) var lastCommandCompletion: CoreCommandCompletion?
     struct WorkflowModeChange {
@@ -153,6 +154,7 @@ final class CoreClient {
         if self.snapshot?.config.terminal != snapshot.config.terminal {
             terminalFont = TerminalFont.resolve(snapshot.config.terminal)
             terminalCursorStyle = snapshot.config.terminal.cursorStyle
+            terminalCursorBlink = snapshot.config.terminal.cursorBlink
         }
         for terminal in self.snapshot?.terminals ?? []
         where !snapshot.terminals.contains(where: { $0.terminalID == terminal.terminalID }) {
@@ -190,6 +192,7 @@ final class CoreClient {
             snapshot.config = config
             terminalFont = TerminalFont.resolve(config.terminal)
             terminalCursorStyle = config.terminal.cursorStyle
+            terminalCursorBlink = config.terminal.cursorBlink
         case .workflowTypesChanged(let types):
             snapshot.workflowTypes = types
         case .traceChanged(let summary):
