@@ -45,18 +45,33 @@ nonisolated struct CoreEditorConfig: Decodable, Equatable, Sendable {
 nonisolated struct CoreTerminalConfig: Decodable, Equatable, Sendable {
     let fontFamily: String
     let fontSize: Double
+    let cursorStyle: CursorStyle
+    let cursorBlink: Bool
     let palettes: CoreTerminalPalettes?
 
-    init(fontFamily: String, fontSize: Double, palettes: CoreTerminalPalettes? = nil) {
+    init(
+        fontFamily: String, fontSize: Double, cursorStyle: CursorStyle = .block,
+        cursorBlink: Bool = true, palettes: CoreTerminalPalettes? = nil
+    ) {
         self.fontFamily = fontFamily
         self.fontSize = fontSize
+        self.cursorStyle = cursorStyle
+        self.cursorBlink = cursorBlink
         self.palettes = palettes
     }
 
     private enum CodingKeys: String, CodingKey {
         case fontFamily = "font_family"
         case fontSize = "font_size"
+        case cursorStyle = "cursor_style"
+        case cursorBlink = "cursor_blink"
         case palettes
+    }
+
+    enum CursorStyle: String, Decodable, Sendable {
+        case block
+        case underline
+        case bar
     }
 }
 

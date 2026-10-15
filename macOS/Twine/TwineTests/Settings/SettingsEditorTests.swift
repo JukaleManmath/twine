@@ -9,7 +9,8 @@ struct SettingsEditorTests {
     @Test func configEventsDecodeAndApplyAutosavePreferences() async throws {
         let json = """
             {"sequence":2,"event":{"type":"configChanged","config":{
-             "appearance":{"color_scheme":"system"},"terminal":{"font_family":"","font_size":13},
+             "appearance":{"color_scheme":"system"},
+             "terminal":{"font_family":"","font_size":13,"cursor_style":"block","cursor_blink":true},
              "editor":{"autosave":false,"autosave_delay_ms":2000}}}}
             """
         let event = try JSONDecoder().decode(CoreEvent.self, from: Data(json.utf8))
@@ -32,7 +33,8 @@ struct SettingsEditorTests {
         let json = """
             {"sequence":2,"event":{"type":"configChanged","config":{
              "appearance":{"color_scheme":"dark"},"terminal":{
-             "font_family":"Menlo","font_size":18,"palettes":{"light":\(palette),"dark":\(palette)}}}}}
+             "font_family":"Menlo","font_size":18,"cursor_style":"block","cursor_blink":false,
+             "palettes":{"light":\(palette),"dark":\(palette)}}}}}
             """
         let event = try JSONDecoder().decode(CoreEvent.self, from: Data(json.utf8))
         let transport = SettingsFileTransport(reloadEvent: event)
@@ -46,6 +48,7 @@ struct SettingsEditorTests {
             try await waitUntil { client.snapshot?.sequence == 2 }
             #expect(client.snapshot?.config.appearance.colorScheme == .dark)
             #expect(client.terminalFont.pointSize == 18)
+            #expect(client.terminalCursorBlink == false)
             #expect(client.snapshot?.config.terminal.palettes?.dark.ansi[4] == "#123456")
             #expect(client.runState == .running)
             await client.stop()

@@ -682,7 +682,7 @@ mod tests {
                 "config": {
                     "appearance": { "color_scheme": "dark" },
                     "theme": { "light": "twine_light", "dark": "twine_dark" },
-                    "terminal": { "font_family": "Menlo", "font_size": 15.5, "colors": {}, "palettes": twine_core::config::TerminalPalettes::default() },
+                    "terminal": { "font_family": "Menlo", "font_size": 15.5, "cursor_style": "block", "cursor_blink": true, "colors": {}, "palettes": twine_core::config::TerminalPalettes::default() },
                     "traces": {"detail_budget_mb":512,"retention_days":90},
                     "editor": { "autosave": false, "autosave_delay_ms": 2000 }
                 },
