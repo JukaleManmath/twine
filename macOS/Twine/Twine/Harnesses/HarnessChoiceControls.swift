@@ -127,7 +127,7 @@ struct HarnessChoiceRow: View {
         .labelsHidden()
         .fixedSize()
         .accessibilityIdentifier("roleHarness-\(identifier)")
-        .onChange(of: available) {
+        .onChange(of: available, initial: true) {
             if !available.contains(choice.harness), let first = available.first {
                 choice.switchHarness(to: first)
             }
