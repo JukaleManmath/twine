@@ -116,7 +116,12 @@ struct HarnessChoiceRow: View {
     }
 
     private var harnessPicker: some View {
-        let available = catalog.availableHarnesses(folder: client.snapshot?.folders.openFolder)
+        // The designer sets saved defaults and must show all harnesses, not just locally installed ones.
+        // The launch form adapts saved choices to the current machine's available harnesses.
+        let available: [CoreHarness] =
+            adaptsChoiceToCatalog
+            ? catalog.availableHarnesses(folder: client.snapshot?.folders.openFolder)
+            : CoreHarness.allCases
         return Picker(title, selection: Binding(get: { choice.harness }, set: { choice.switchHarness(to: $0) })) {
             if available.isEmpty {
                 Text("No agents available")
@@ -128,6 +133,7 @@ struct HarnessChoiceRow: View {
         .fixedSize()
         .accessibilityIdentifier("roleHarness-\(identifier)")
         .onChange(of: available, initial: true) {
+            guard adaptsChoiceToCatalog else { return }
             if !available.contains(choice.harness), let first = available.first {
                 choice.switchHarness(to: first)
             }
