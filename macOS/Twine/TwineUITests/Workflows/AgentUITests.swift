@@ -44,7 +44,7 @@ extension TwineUITests {
 
     private func writeTraceAgent(in folder: URL) throws {
         try #"""
-        case "$1" in --help) exit 0 ;; esac
+        case "$1" in --list-models|--help) exit 0 ;; esac
         while [ "$#" -gt 0 ]; do
             if [ "$1" = --settings ]; then settings="$2"; break; fi
             shift
@@ -145,9 +145,11 @@ extension TwineUITests {
     }
 
     @MainActor
+    // swiftlint:disable:next function_body_length
     func testForceQuitPreservesAgentOutputAndCanResumeItsSession() throws {
         let folder = try makeFolder()
         try """
+        case "$1" in --list-models|--help) exit 0 ;; esac
         echo $$ > agent.pid
         echo CRASH-HISTORY
         printf '%s\\n' "$@" > agent-arguments
@@ -221,6 +223,7 @@ extension TwineUITests {
         // The UI test runner is sandboxed, and macOS won't let Twine execute a script that it wrote.
         // So the runner only writes the script's text, and Twine's own shell installs the executable.
         try """
+        case "$1" in --list-models|--help) exit 0 ;; esac
         echo $$ > agent.pid
         for argument in "$@"; do [ "$argument" = -- ] && echo prompt > agent-args.txt; done
         echo STUB-AGENT-READY
