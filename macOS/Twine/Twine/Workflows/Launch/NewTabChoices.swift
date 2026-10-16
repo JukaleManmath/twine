@@ -208,16 +208,24 @@ struct NewTabChoices: View {
                         .help("Skip the agent's permission prompts. pi doesn't ask for permission.")
                         .accessibilityIdentifier("singleAgentYolo")
                     Divider()
-                    ForEach(CoreHarness.allCases) { harness in
-                        Menu(harness.displayName) {
-                            SingleAgentHarnessMenu(
-                                harness: harness,
-                                entry: harnessCatalog.entry(for: harness, folder: client.snapshot?.folders.openFolder),
-                                yolo: singleAgentYolo,
-                                start: start,
-                                chooseCustomModel: { customModelHarness = harness })
+                    let available = harnessCatalog.availableHarnesses(
+                        folder: client.snapshot?.folders.openFolder)
+                    if available.isEmpty {
+                        Text("No agents available")
+                    } else {
+                        ForEach(available) { harness in
+                            Menu(harness.displayName) {
+                                SingleAgentHarnessMenu(
+                                    harness: harness,
+                                    entry: harnessCatalog.entry(
+                                        for: harness,
+                                        folder: client.snapshot?.folders.openFolder),
+                                    yolo: singleAgentYolo,
+                                    start: start,
+                                    chooseCustomModel: { customModelHarness = harness })
+                            }
+                            .accessibilityIdentifier("harness-\(harness.rawValue)")
                         }
-                        .accessibilityIdentifier("harness-\(harness.rawValue)")
                     }
                 } label: {
                     ChoiceTile(choice: choice)
